@@ -6,8 +6,7 @@ const client = new Discord.Client({
 });
 
 const numberMap = new Map();
- 
-// Function to generate a unique string identifier
+
 function generateStringIdentifier(num) {
     return `ID${num}-${Math.random().toString(36).substring(2, 8)}`;
 }
