@@ -1,48 +1,68 @@
-const Discord = require("discord.js");
- 
-const client = new Discord.Client({
-    intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_MEMBERS", "MESSAGE_CONTENT"],
-    partials: ["CHANNEL", "MESSAGE"]
+const { Client, GatewayIntentBits, Partials } = require("discord.js");
+
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.MessageContent
+    ],
+    partials: [Partials.Channel, Partials.Message]
 });
 
-const numberMap = new Map();
+const storageMap = new Map();
 
-function generateStringIdentifier(num) {
-    return `ID${num}-${Math.random().toString(36).substring(2, 8)}`;
-}
+const generateStringIdentifier = () => `ID-${Math.random().toString(36).substring(2, 8)}`;
 
-client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}`);
+client.once("ready", () => {
+    console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
-client.on('messageCreate', async (message) => {
+client.on("messageCreate", (message) => {
     if (message.author.bot) return;
 
-    if (message.content.toLowerCase() === "test") {
-        message.reply("Test successful!");
-    }
+    const [command, param] = message.content.trim().split(" ");
 
-    const args = message.content.split(' ');
+    switch (command.toLowerCase()) {
+        case "test":
+            return message.reply("✅ Test successful!");
 
-    if (args[0] === '!store' && args[1]) {
-        const num = parseFloat(args[1]);
-        if (isNaN(num)) {
-            message.reply('Please provide a valid number.');
-            return;
+        case "!s": {
+            const num = parseFloat(param);
+            if (isNaN(num)) {
+                return message.reply("⚠️ Please provide a valid number.");
+            }
+
+            const uniqueString = generateStringIdentifier();
+            storageMap.set(uniqueString, num);
+            return message.reply(`✅ Stored **${num}** with: **${uniqueString}**`);
         }
-        const uniqueString = generateStringIdentifier(num);
-        numberMap.set(uniqueString, num);
-        message.reply(`Stored ${num} with identifier: ${uniqueString}`);
-    }
 
-    if (args[0] === '!retrieve' && args[1]) {
-        const num = numberMap.get(args[1]);
-        if (num !== undefined) {
-            message.reply(`The number associated with ${args[1]} is ${num}.`);
-        } else {
-            message.reply('Identifier not found.');
+        case "!r": {
+            const identifier = param.startsWith("ID-") ? param : `ID-${param}`;
+            const storedData = storageMap.get(identifier);
+
+            if (!storedData) {
+                return message.reply("❌ Identifier not found.");
+            }
+
+            return message.reply(
+                typeof storedData === "number"
+                    ? `🔢 The number associated with **${identifier}** is **${storedData}**`
+                    : `🖼️ Here is the image associated with **${identifier}**: ${storedData}`
+            );
         }
+
+        default:
+            if (message.attachments.size > 0) {
+                message.attachments.forEach((attachment) => {
+                    const uniqueString = generateStringIdentifier();
+                    storageMap.set(uniqueString, attachment.url);
+                    message.reply(`✅ Stored image with: **${uniqueString}**`);
+                });
+            }
+            break;
     }
 });
- 
+
 client.login(process.env.TOKEN)
